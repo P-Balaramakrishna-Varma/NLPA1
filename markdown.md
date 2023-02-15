@@ -8,3 +8,8 @@
 - Total tokenizer
     - list of tokens of tokens. [ngram model]
     - sequence of tokens. [lstm?][submission]
+
+- regex for the problems url etc correct? 
+- (before splitting sentence because .)
+- ." --> " handled in if statement
+- sentences or no sentences
