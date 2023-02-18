@@ -4,7 +4,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import tqdm
-
+import random
+import sys
 
 
 
@@ -98,6 +99,11 @@ def tokenize_corpus(path):
     return sentence_tokenized
 
 
+def append_start(tokenized_corpus):
+    for sentence in tokenized_corpus:
+        sentence.insert(0, "<START>")
+    return tokenized_corpus
+
 
 
 
@@ -139,7 +145,7 @@ def get_data(tokenized_corpus, vocab_idx, batch_size):
     for tokenized_sentence in tokenized_corpus:            
             tokens = [get_index(token, vocab_idx) for token in tokenized_sentence] 
             data.extend(tokens)              
-    data = torch.Tensor(data)                                 
+    data = torch.LongTensor(data)                                 
     num_batches = data.shape[0] // batch_size 
     data = data[:num_batches * batch_size]                       
     data = data.view(batch_size, num_batches)          
@@ -157,7 +163,7 @@ def get_batch(data, len, num_batches, idx):
 
 """Nueral Network architecture"""
 class language_model(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_dim, no_layers=1):        
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, no_layers):        
         super().__init__()
         self.hidden_dim = hidden_dim
         self.embedding_dim = embedding_dim
@@ -166,7 +172,7 @@ class language_model(nn.Module):
         # Embedding layer
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         # lstm layer single lstm
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layer=no_layers, batch_first=True)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=no_layers, batch_first=True)
         # output layer
         self.fc = nn.Linear(hidden_dim, vocab_size)
 
@@ -192,6 +198,7 @@ class language_model(nn.Module):
 """Training and Testing loops"""
 def train_epoch(model, data, optimizer, loss_function, batch_size, len, max_norm, device):
     # drop all batches that are not a multiple of len
+    model.train()
     num_batches = data.shape[-1]
     data = data[:, :num_batches - (num_batches -1) % len]
     num_batches = data.shape[-1]
@@ -199,7 +206,7 @@ def train_epoch(model, data, optimizer, loss_function, batch_size, len, max_norm
     total_loss = 0
     hidden = model.init_hidden(batch_size, device)
     
-    for idx in tqdm.tqdm(range(0, num_batches - 1, len)):
+    for idx in tqdm.tqdm(range(0, num_batches - 1 - len, len)):
         optimizer.zero_grad()
         hidden = model.detach_hidden(hidden)
 
@@ -229,7 +236,7 @@ def evaluate(model, data, loss_function, batch_size, len, device):
     hidden = model.init_hidden(batch_size, device)
 
     with torch.no_grad():
-        for idx in tqdm.tqdm(range(0, num_batches - 1, len)):
+        for idx in tqdm.tqdm(range(0, num_batches - 1 - len, len)):
             hidden = model.detach_hidden(hidden)
             X, y = get_batch(data, len, num_batches, idx)
             X, y = X.to(device), y.to(device)
@@ -242,3 +249,60 @@ def evaluate(model, data, loss_function, batch_size, len, device):
     return total_loss
 
 
+
+
+
+
+if __name__ == "__main__":
+    if (torch.cuda.is_available() == True):
+        device = torch.device("cuda:" + sys.argv[1])
+    else:
+        device = torch.device("cpu")
+
+    # Tokenizing corpus    
+    corpus_path = sys.argv[2]
+    tokenized_corpus = tokenize_corpus(corpus_path)
+    tokenize_corpus = append_start(tokenized_corpus)
+
+    # Creating vocabulary
+    unigram_counts = unigram_from_token_corpus(tokenized_corpus)
+    vocab_idx = vocab_index(unigram_counts)
+
+    # Creating data and test dev split
+    random.shuffle(tokenized_corpus)
+    length = len(tokenized_corpus)
+    train_sentences = tokenized_corpus[:int(length*0.7)]
+    test_sentences = tokenized_corpus[int(length*0.15):]
+    dev_sentences = tokenized_corpus[int(length*0.15):int(length*0.7)]
+    
+    test_data = get_data(test_sentences, vocab_idx, 64)
+    dev_data = get_data(dev_sentences, vocab_idx, 64)
+    train_data = get_data(train_sentences, vocab_idx, 64)
+
+    # Creating model
+    ## Hyperparameters
+    vocab_size = len(vocab_idx)
+    embedding_dim = 300
+    hidden_dim = 1024  
+    no_layers = 1                               
+    lr = 1e-2
+    batch_size = 64
+    len = 35
+    max_norm = 10
+
+    model = language_model(vocab_size, embedding_dim, hidden_dim, no_layers).to(device)
+    optimizer = optim.SGD(model.parameters(), lr=lr)
+    loss_func = nn.CrossEntropyLoss()
+
+    file = open("model_" + sys.argv[1] + ".txt", "w")
+    epochs = 10
+    for t in range(epochs):
+        print(f"Epoch {t+1}\n-------------------------------")
+        l1 = train_epoch(model, train_data, optimizer, loss_func, batch_size, len, max_norm, device)
+        print("loss train: ", l1)
+        l2 = evaluate(model, dev_data, loss_func, batch_size, len, device)
+        print("loss test: ", l2)
+        if(epochs % 100 == 0):
+            torch.save(model.state_dict(), "model_" + sys.argv[1] + "__" + str(t) + ".pt")
+            file.write("Epoch: " + str(t) + " loss train: " + str(l1) + " loss test: " + str(l2) + "\n")
+    print("Done!")
