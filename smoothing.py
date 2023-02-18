@@ -22,7 +22,7 @@ def Read_Corpus(path):
 def substitue_tokens(sentences):
     sub_sentences = []
     for sentence in sentences:
-        sub_sen = sentence
+        sub_sen = sentence.lower()
         sub_sen = re.sub("#[a-zA-Z0-9_]+", "<HASHTAG>", sub_sen)
         sub_sen = re.sub("@[a-zA-Z0-9_]+", "<MENTION>", sub_sen)
         sub_sen = re.sub("https?://[a-zA-Z0-9_./]+", "<URL>", sub_sen)
@@ -48,7 +48,7 @@ def tokenize_sentence(sen):
             var_word = word
             while(starting_punc(var_word) == True):
                 tokenized_sen.append(word[0])
-                var_word = word[1:]
+                var_word = var_word[1:]
             
             end_puncs = []
             while(ending_punc(var_word) == True):
