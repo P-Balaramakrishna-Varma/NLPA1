@@ -46,12 +46,12 @@ def tokenize_sentence(sen):
             tokenized_sen.append(word)
         else:
             var_word = word
-            while(starting_punc(var_word) == True):
+            while(len(var_word) != 0 and starting_punc(var_word) == True):
                 tokenized_sen.append(word[0])
                 var_word = var_word[1:]
             
             end_puncs = []
-            while(ending_punc(var_word) == True):
+            while(len(var_word) != 0 and ending_punc(var_word) == True):
                 end_puncs = [var_word[-1]] + end_puncs
                 var_word = var_word[:-1]
             
