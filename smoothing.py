@@ -129,6 +129,12 @@ def unigram_from_tokens_sen(tokens, Counts):
             Counts[token] = 1
 
 
+# Use good turing estimage r0 instead of 10
+def unigram_adding_unseen(Counts):
+    Counts["<UNK>"] = 10
+    return Counts
+
+
 def sum_values(Counts, ngram_size):
     SumVal = {}
     if(ngram_size == 1):
@@ -171,7 +177,7 @@ def unigram_prob(word, Counts, SumCounts):
     if word in Counts.keys():
         return Counts[word] / SumCounts["SUM"]
     else:
-        return 0
+        return Counts["<UNK>"] / SumCounts["SUM"]
     
 
 def learn_model_data(token_sentences, N):
@@ -186,6 +192,7 @@ def learn_model_data(token_sentences, N):
             for sentence in token_sentences:
                 ngrams_from_tokens_sen(sentence, n, Counts_all[n])
 
+    Counts_all[1] = unigram_adding_unseen(Counts_all[1])
     Sums_all = [{} for i in range(N + 1)]
     for n in range(1, N  + 1):
         Sums_all[n] = sum_values(Counts_all[n], n)
@@ -215,7 +222,7 @@ def witten_bell_conditional(history, word, Counts_all, Sums_all, N):
             prob_recur = prob_word_novel * witten_bell_conditional(history[1:], word, Counts_all, Sums_all, N - 1)
             return prob_cur + prob_recur
         else:
-            return 0
+            return unigram_prob(word, Counts_all[1], Sums_all[1])
 
 
 def keser_ney(history, word, Counts_all, Sums_all, kenser_uni, N, d):
@@ -223,7 +230,7 @@ def keser_ney(history, word, Counts_all, Sums_all, kenser_uni, N, d):
         if word in kenser_uni.keys():
             return kenser_uni[word] / kenser_uni["total_bigrams"]
         else:
-            return 0
+            return unigram_prob(word, Counts_all[N], Sums_all[N])  #ALL other terms will be zero
     else:
         if history in Counts_all[N].keys():
             novel_history_words = len(Counts_all[N][history].keys())  #time compleixty O(1)
@@ -238,7 +245,7 @@ def keser_ney(history, word, Counts_all, Sums_all, kenser_uni, N, d):
             recur_prob = keser_ney(history[1:], word, Counts_all, Sums_all, kenser_uni, N - 1, d)
             return rec_weight * recur_prob + cur_prob
         else:
-            return 0
+            return unigram_prob(word, Counts_all[1], Sums_all[1])
         
  
 
@@ -264,6 +271,9 @@ def likehood_of_sen_tokens(tokens, ngram_size, Counts_all, Sums_all, keser_uni, 
             likelyhood *= keser_ney(history, word, Counts_all, Sums_all, keser_uni, ngram_size, d)
         else:
             assert(False)
+        if(likelyhood == 0):
+            print(history, word)
+            break
     return likelyhood
 
 
@@ -280,7 +290,13 @@ def perplexity_of_sen_tokens(tokens, ngram_size, Counts_all, Sums_all, keser_uni
 def store_perplexity(perplexities, sentences, file_path):
     file = open(file_path, "w")
     
-    avg_perplexity = sum(perplexities) / len(perplexities)
+    avg_perplexity = 0
+    count = 0
+    for i in range(len(perplexities)):
+        if(perplexities[i] != float("inf")):
+            avg_perplexity += perplexities[i]
+            count += 1
+    avg_perplexity /= count
     file.write(str(avg_perplexity) + "\n")
 
     for i in range(len(sentences)):
@@ -299,18 +315,18 @@ if __name__ == "__main__":
 
         # tokenization
         tokenized_corpus = tokenize_corpus(corpus_path)
-        print("tokenization done")
+        #print("tokenization done")
 
         # test train split
         random.shuffle(tokenized_corpus)
         test_sentences = tokenized_corpus[:1000]
         train_sentences = tokenized_corpus[1000:]
-        print("test train split done")
+        #print("test train split done")
 
         # learn model data
         Counts_all, Sums_all, keser_uni = learn_model_data(train_sentences, 4)
         d = 0.5 #hyperparameter
-        print("model data learned")
+        #print("model data learned")
         
         # defining smoothing method (used in perplexity and likehood functions)
         if smoothing == "k":
@@ -326,13 +342,13 @@ if __name__ == "__main__":
         for sentence in train_sentences:
             perplexity = perplexity_of_sen_tokens(sentence, 4, Counts_all, Sums_all, keser_uni, d, method)
             train_perplexity.append(perplexity)
-        print("train perplexity done")
+        #print("train perplexity done")
         ## Test perplexity
         test_perplexity = []
         for sentence in test_sentences:
             perplexity = perplexity_of_sen_tokens(sentence, 4, Counts_all, Sums_all, keser_uni, d, method)
             test_perplexity.append(perplexity)
-        print("test perplexity done")
+        #print("test perplexity done")
 
         # storing perlplexities
         ## train
@@ -350,13 +366,13 @@ if __name__ == "__main__":
 
         # tokenization
         tokenized_corpus = tokenize_corpus(corpus_path)
-        print("tokenization done")
+        #print("tokenization done")
 
 
         # learn model data
         Counts_all, Sums_all, keser_uni = learn_model_data(tokenized_corpus, 4)
         d = 0.5 #hyperparameter
-        print("model data learned")
+        #print("model data learned")
         
         # defining smoothing method (used in perplexity and likehood functions)
         if smoothing == "k":

@@ -295,14 +295,14 @@ if __name__ == "__main__":
     loss_func = nn.CrossEntropyLoss()
 
     file = open("model_" + sys.argv[1] + ".txt", "w")
-    epochs = 10
+    epochs = 1000
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         l1 = train_epoch(model, train_data, optimizer, loss_func, batch_size, len, max_norm, device)
         print("loss train: ", l1)
         l2 = evaluate(model, dev_data, loss_func, batch_size, len, device)
         print("loss test: ", l2)
-        if(epochs % 100 == 0):
+        if(t % 50 == 0):
             torch.save(model.state_dict(), "model_" + sys.argv[1] + "__" + str(t) + ".pt")
             file.write("Epoch: " + str(t) + " loss train: " + str(l1) + " loss test: " + str(l2) + "\n")
     print("Done!")
