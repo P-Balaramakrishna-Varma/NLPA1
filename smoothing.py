@@ -292,55 +292,86 @@ def store_perplexity(perplexities, sentences, file_path):
 
 
 if __name__ == "__main__":
-    assert(len(sys.argv) == 4) #or 4
-    corpus_path = sys.argv[2]
-    smoothing = sys.argv[1]
-    lm_index = sys.argv[3]
+    if(len(sys.argv) == 4):
+        corpus_path = sys.argv[2]
+        smoothing = sys.argv[1]
+        lm_index = sys.argv[3]
 
-    # tokenization
-    tokenized_corpus = tokenize_corpus(corpus_path)
-    print("tokenization done")
+        # tokenization
+        tokenized_corpus = tokenize_corpus(corpus_path)
+        print("tokenization done")
 
-    # test train split
-    random.shuffle(tokenized_corpus)
-    test_sentences = tokenized_corpus[:1000]
-    train_sentences = tokenized_corpus[1000:]
-    print("test train split done")
+        # test train split
+        random.shuffle(tokenized_corpus)
+        test_sentences = tokenized_corpus[:1000]
+        train_sentences = tokenized_corpus[1000:]
+        print("test train split done")
 
-    # learn model data
-    Counts_all, Sums_all, keser_uni = learn_model_data(train_sentences, 4)
-    d = 0.5 #hyperparameter
-    print("model data learned")
-    
-    # defining smoothing method (used in perplexity and likehood functions)
-    if smoothing == "k":
-        method = "keser_ney"
-    elif smoothing == "w":
-        method = "witten_bell"
-    else:
-        assert(False)
+        # learn model data
+        Counts_all, Sums_all, keser_uni = learn_model_data(train_sentences, 4)
+        d = 0.5 #hyperparameter
+        print("model data learned")
+        
+        # defining smoothing method (used in perplexity and likehood functions)
+        if smoothing == "k":
+            method = "keser_ney"
+        elif smoothing == "w":
+            method = "witten_bell"
+        else:
+            assert(False)
 
-    # perplexity caliculation
-    ## Train perplexity
-    train_perplexity = []
-    for sentence in train_sentences:
-        perplexity = perplexity_of_sen_tokens(sentence, 4, Counts_all, Sums_all, keser_uni, d, method)
-        train_perplexity.append(perplexity)
-    print("train perplexity done")
-    ## Test perplexity
-    test_perplexity = []
-    for sentence in test_sentences:
-        perplexity = perplexity_of_sen_tokens(sentence, 4, Counts_all, Sums_all, keser_uni, d, method)
-        test_perplexity.append(perplexity)
-    print("test perplexity done")
+        # perplexity caliculation
+        ## Train perplexity
+        train_perplexity = []
+        for sentence in train_sentences:
+            perplexity = perplexity_of_sen_tokens(sentence, 4, Counts_all, Sums_all, keser_uni, d, method)
+            train_perplexity.append(perplexity)
+        print("train perplexity done")
+        ## Test perplexity
+        test_perplexity = []
+        for sentence in test_sentences:
+            perplexity = perplexity_of_sen_tokens(sentence, 4, Counts_all, Sums_all, keser_uni, d, method)
+            test_perplexity.append(perplexity)
+        print("test perplexity done")
 
-    # storing perlplexities
-    ## train
-    file_path = "./2020101024_LM" + str(lm_index) + "_train-perplexity" + ".txt"
-    store_perplexity(train_perplexity, train_sentences, file_path)
-    ## test
-    file_path = "./2020101024_LM" + str(lm_index) + "_test-perplexity" + ".txt"
-    store_perplexity(test_perplexity, test_sentences, file_path)
-    
-    
-    exit(0)
+        # storing perlplexities
+        ## train
+        file_path = "./2020101024_LM" + str(lm_index) + "_train-perplexity" + ".txt"
+        store_perplexity(train_perplexity, train_sentences, file_path)
+        ## test
+        file_path = "./2020101024_LM" + str(lm_index) + "_test-perplexity" + ".txt"
+        store_perplexity(test_perplexity, test_sentences, file_path)
+
+        
+        exit(0)
+    elif len(sys.argv) == 3:
+        corpus_path = sys.argv[2]
+        smoothing = sys.argv[1]
+
+        # tokenization
+        tokenized_corpus = tokenize_corpus(corpus_path)
+        print("tokenization done")
+
+
+        # learn model data
+        Counts_all, Sums_all, keser_uni = learn_model_data(tokenized_corpus, 4)
+        d = 0.5 #hyperparameter
+        print("model data learned")
+        
+        # defining smoothing method (used in perplexity and likehood functions)
+        if smoothing == "k":
+            method = "keser_ney"
+        elif smoothing == "w":
+            method = "witten_bell"
+        else:
+            assert(False)
+
+        # perplexity caliculation
+        ## Train perplexity
+        while(1):
+            sentence = input("input sentence: ")
+            tokens = tokenize_sentence(sentence)
+            likely = likehood_of_sen_tokens(tokens, 4, Counts_all, Sums_all, keser_uni, d, method)
+            print(likely)
+
+        exit(0)
